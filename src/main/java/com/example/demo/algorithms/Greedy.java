@@ -1,5 +1,4 @@
 package com.example.demo.algorithms;
 
-public class BFS {
-
+public class Greedy {
 }

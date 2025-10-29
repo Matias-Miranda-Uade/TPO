@@ -14,7 +14,7 @@ public class NodeEntity {
     private Integer esquinaId;
     private String nombre;
 
-    @Relationship(type = "ROAD")
+    @Relationship(direction=Relationship.Direction.OUTGOING)
     private List<RoadRelationship> roads = new ArrayList<>();
 
     public NodeEntity() {}

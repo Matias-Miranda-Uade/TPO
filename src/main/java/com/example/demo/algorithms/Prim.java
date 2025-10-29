@@ -1,88 +1,86 @@
 package com.example.demo.algorithms;
 
+import com.example.demo.model.NodeEntity;
+import com.example.demo.model.RoadRelationship;
+import com.example.demo.repository.NodeRepository;
+
 import java.util.*;
 
 public class Prim {
+    /**
+     * Calcula el árbol generador mínimo comenzando desde startId.
+     * Devuelve las relaciones seleccionadas (una por arista del MST).
+     */
+    public static List<RoadRelationship> minimumSpanningTree(NodeRepository nodeRepo, Integer startId) {
+        List<RoadRelationship> result = new ArrayList<>();
+        if (nodeRepo == null || startId == null) return result;
 
-    // Representa una arista no dirigida entre u y v con peso w
-    public static class Edge implements Comparable<Edge> {
-        public final int u;
-        public final int v;
-        public final int w;
+        Optional<NodeEntity> startOpt = nodeRepo.findById(startId);
+        if (!startOpt.isPresent()) return result;
 
-        public Edge(int u, int v, int w) {
+        // Mapa de todos los nodos (para fácil acceso)
+        Map<Integer, NodeEntity> allNodes = new HashMap<>();
+        for (NodeEntity n : nodeRepo.findAll()) {
+            if (n != null && n.getEsquinaId() != null)
+                allNodes.put(n.getEsquinaId(), n);
+        }
+
+        // Conjunto de nodos ya incluidos en el MST
+        Set<Integer> inMST = new HashSet<>();
+        // Cola de prioridad por peso (menor primero)
+        PriorityQueue<Edge> pq = new PriorityQueue<>(Comparator.comparingInt(e -> e.weight));
+
+        Integer start = startId;
+        inMST.add(start);
+        NodeEntity startNode = allNodes.get(start);
+        if (startNode == null) return result;
+
+        // Inicializar con las aristas del nodo inicial
+        addEdgesFromNode(startNode, pq);
+
+        // Mientras haya aristas candidatas
+        while (!pq.isEmpty() && inMST.size() < allNodes.size()) {
+            Edge e = pq.poll();
+            if (inMST.contains(e.v)) continue; // ya conectado
+
+            // Añadir la arista al resultado
+            result.add(e.road);
+
+            // Incluir el nuevo nodo
+            inMST.add(e.v);
+
+            // Añadir nuevas aristas desde ese nodo
+            NodeEntity nextNode = allNodes.get(e.v);
+            addEdgesFromNode(nextNode, pq);
+        }
+
+        return result;
+    }
+
+    // Función auxiliar: agrega las aristas de un nodo a la cola de prioridad
+    private static void addEdgesFromNode(NodeEntity node, PriorityQueue<Edge> pq) {
+        if (node == null || node.getRoads() == null) return;
+        for (RoadRelationship r : node.getRoads()) {
+            if (r == null || r.getTarget() == null) continue;
+            Integer targetId = r.getTarget().getEsquinaId();
+            if (targetId == null) continue;
+            int peso = r.getPeso() != null ? r.getPeso() : 0;
+            pq.add(new Edge(node.getEsquinaId(), targetId, peso, r));
+        }
+    }
+
+    // Clase auxiliar: representa una arista
+    private static class Edge {
+        final int u;
+        final int v;
+        final int weight;
+        final RoadRelationship road;
+
+        Edge(int u, int v, int weight, RoadRelationship road) {
             this.u = u;
             this.v = v;
-            this.w = w;
+            this.weight = weight;
+            this.road = road;
         }
-
-        @Override
-        public int compareTo(Edge o) {
-            return Integer.compare(this.w, o.w);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%d -- %d (w=%d)", u, v, w);
-        }
-    }
-
-    // Construye la lista de adyacencia (arrays de listas) a partir de una colección de aristas
-    public static List<Edge>[] buildAdjList(int n, Collection<Edge> edges) {
-        @SuppressWarnings("unchecked")
-        List<Edge>[] adj = new List[n];
-        for (int i = 0; i < n; i++) adj[i] = new ArrayList<>();
-        for (Edge e : edges) {
-            // añadimos aristas en ambas direcciones para grafo no dirigido
-            adj[e.u].add(new Edge(e.u, e.v, e.w));
-            adj[e.v].add(new Edge(e.v, e.u, e.w));
-        }
-        return adj;
-    }
-
-    // Ejecuta Prim y devuelve la lista de aristas del MST o null si el grafo no es conexo
-    // n: numero de nodos (de 0 a n-1)
-    // adj: lista de adyacencia
-    // start: nodo inicial (por defecto 0 si no se quiere especificar)
-    public static List<Edge> primMST(int n, List<Edge>[] adj, int start) {
-        if (n <= 0) return Collections.emptyList();
-        boolean[] inMST = new boolean[n];
-        PriorityQueue<Edge> pq = new PriorityQueue<>();
-        List<Edge> mst = new ArrayList<>();
-
-        // marcar el nodo inicial y añadir sus aristas al heap
-        inMST[start] = true;
-        for (Edge e : adj[start]) pq.offer(e);
-
-        while (!pq.isEmpty() && mst.size() < n - 1) {
-            Edge e = pq.poll();
-            // seleccionar la arista que conecta el árbol con un vértice fuera de él
-            if (inMST[e.u] && !inMST[e.v]) {
-                mst.add(e);
-                int next = e.v;
-                inMST[next] = true;
-                for (Edge ne : adj[next]) {
-                    if (!inMST[ne.v]) pq.offer(ne);
-                }
-            }
-            // si la arista conecta dos vértices dentro del árbol o dos fuera, ignorarla
-        }
-
-        // si no tenemos n-1 aristas, el grafo no era conexo
-        if (mst.size() != n - 1) return null;
-        return mst;
-    }
-
-    // Sobrecarga conveniente que construye la lista de adyacencia desde una lista de aristas
-    public static List<Edge> primMST(int n, Collection<Edge> edges) {
-        List<Edge>[] adj = buildAdjList(n, edges);
-        return primMST(n, adj, 0);
-    }
-
-    // Calcula el peso total de un conjunto de aristas
-    public static int totalWeight(Collection<Edge> edges) {
-        int sum = 0;
-        for (Edge e : edges) sum += e.w;
-        return sum;
     }
 }

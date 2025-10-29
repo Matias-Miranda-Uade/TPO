@@ -63,13 +63,9 @@ public class RamificacionYPoda {
         }
     }
 
-    /**
-     * Resuelve 0/1 knapsack usando ramificación y poda (best-first).
-     * @param values valores por ítem
-     * @param weights pesos por ítem
-     * @param capacity capacidad entera
-     * @return Result con valor máximo y arreglo boolean indicando ítems seleccionados (mismo orden que la entrada)
-     */
+
+     // Resuelve 0/1 knapsack usando ramificación y poda (best-first).
+
     public static Result knapsackBranchAndBound(int[] values, int[] weights, int capacity) {
         if (values == null || weights == null || values.length != weights.length) {
             throw new IllegalArgumentException("Arrays de valores y pesos deben existir y tener la misma longitud.");
@@ -100,12 +96,12 @@ public class RamificacionYPoda {
 
         while (!pq.isEmpty()) {
             Node u = pq.poll();
-            if (u.bound <= maxValue) continue; // poda por cota
+            if (u.bound <= maxValue) continue;
 
             int nextLevel = u.level + 1;
             if (nextLevel >= n) continue;
 
-            // Hijo: tomar el siguiente ítem (si cabe)
+            // Hijo: tomar el siguiente ítem
             if (u.weight + items[nextLevel].weight <= capacity) {
                 Node with = new Node(u);
                 with.level = nextLevel;
@@ -156,7 +152,7 @@ public class RamificacionYPoda {
             if (items[j].weight > 0) {
                 bound += remain * (items[j].ratio);
             } else if (items[j].weight == 0 && items[j].value > 0) {
-                // si peso 0 y valor positivo => puede sumar todo (cota infinita en práctica),
+                // si peso 0 y valor positivo => puede sumar todo
                 // pero para evitar problemas tratamos como sumar su valor completo.
                 bound += items[j].value;
             }

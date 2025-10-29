@@ -1,83 +1,144 @@
-
 package com.example.demo.algorithms;
 
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.Record;
+import org.neo4j.driver.Result;
+import org.neo4j.driver.Session;
+import org.springframework.stereotype.Component;
+
+import java.util.*;
+
+@Component
 public class DivideAndConquer {
+    private final Driver driver;
 
-    // Merge Sort
-    public static void mergeSort(int[] arr) {
-        if (arr == null || arr.length < 2) return;
-        int[] tmp = new int[arr.length];
-        mergeSort(arr, 0, arr.length - 1, tmp);
+    public DivideAndConquer(Driver driver) {
+        this.driver = driver;
     }
 
-    private static void mergeSort(int[] arr, int left, int right, int[] tmp) {
-        if (left >= right) return;
-        int mid = left + (right - left) / 2;
-        mergeSort(arr, left, mid, tmp);
-        mergeSort(arr, mid + 1, right, tmp);
-        merge(arr, left, mid, right, tmp);
-    }
+    public static class PathSegment {
+        private final List<Integer> nodes;
+        private final int totalPeso;
+        private final double velocidadPromedio;
 
-    private static void merge(int[] arr, int left, int mid, int right, int[] tmp) {
-        int i = left, j = mid + 1, k = left;
-        while (i <= mid && j <= right) {
-            if (arr[i] <= arr[j]) tmp[k++] = arr[i++];
-            else tmp[k++] = arr[j++];
+        public PathSegment(List<Integer> nodes, int totalPeso, double velocidadPromedio) {
+            this.nodes = nodes;
+            this.totalPeso = totalPeso;
+            this.velocidadPromedio = velocidadPromedio;
         }
-        while (i <= mid) tmp[k++] = arr[i++];
-        while (j <= right) tmp[k++] = arr[j++];
-        for (k = left; k <= right; k++) arr[k] = tmp[k];
-    }
 
-    // Búsqueda binaria (retorna índice o -1)
-    public static int binarySearch(int[] arr, int target) {
-        if (arr == null || arr.length == 0) return -1;
-        return binarySearch(arr, 0, arr.length - 1, target);
-    }
-
-    private static int binarySearch(int[] arr, int low, int high, int target) {
-        if (low > high) return -1;
-        int mid = low + (high - low) / 2;
-        if (arr[mid] == target) return mid;
-        if (arr[mid] < target) return binarySearch(arr, mid + 1, high, target);
-        else return binarySearch(arr, low, mid - 1, target);
-    }
-
-    // Máximo subarreglo por divide & vencerás
-    public static int maxSubarrayDivideAndConquer(int[] arr) {
-        if (arr == null || arr.length == 0) return 0;
-        return maxSubHelper(arr, 0, arr.length - 1).maxSub;
-    }
-
-    private static SubResult maxSubHelper(int[] arr, int l, int r) {
-        if (l == r) {
-            int v = arr[l];
-            return new SubResult(v, v, v, v);
+        public List<Integer> getNodes() {
+            return nodes;
         }
-        int m = l + (r - l) / 2;
-        SubResult left = maxSubHelper(arr, l, m);
-        SubResult right = maxSubHelper(arr, m + 1, r);
 
-        int total = left.total + right.total;
-        int maxPrefix = Math.max(left.maxPrefix, left.total + right.maxPrefix);
-        int maxSuffix = Math.max(right.maxSuffix, right.total + left.maxSuffix);
-        int maxSub = Math.max(Math.max(left.maxSub, right.maxSub), left.maxSuffix + right.maxPrefix);
+        public int getTotalPeso() {
+            return totalPeso;
+        }
 
-        return new SubResult(total, maxPrefix, maxSuffix, maxSub);
+        public double getVelocidadPromedio() {
+            return velocidadPromedio;
+        }
     }
 
+    public PathSegment findOptimalPath(Integer startId, Integer endId) {
+        // Obtener todos los nodos y relaciones del camino
+        String query = """
+            MATCH path = shortestPath((start:NodeEntity {esquinaId: $startId})-[*]-(end:NodeEntity {esquinaId: $endId}))
+            UNWIND relationships(path) as r
+            RETURN collect(distinct [startNode(r).esquinaId, endNode(r).esquinaId, r.peso, r.velocidad]) as segments
+        """;
 
-    private static class SubResult {
-        final int total;
-        final int maxPrefix;
-        final int maxSuffix;
-        final int maxSub;
+        try (Session session = driver.session()) {
+            Result result = session.run(query,
+                    Map.of("startId", startId, "endId", endId));
 
-        SubResult(int total, int maxPrefix, int maxSuffix, int maxSub) {
-            this.total = total;
-            this.maxPrefix = maxPrefix;
-            this.maxSuffix = maxSuffix;
-            this.maxSub = maxSub;
+            if (!result.hasNext()) {
+                return new PathSegment(List.of(), 0, 0);
+            }
+
+            Record record = result.next();
+            List<List<Object>> segments = record.get("segments").asList(Value -> Value.asList());
+
+            // Convertir los segmentos en subproblemas
+            List<List<PathSegment>> subpaths = divideIntoSubpaths(segments);
+
+            // Resolver recursivamente
+            return solvePathRecursively(subpaths, 0, subpaths.size() - 1);
         }
+    }
+
+    private List<List<PathSegment>> divideIntoSubpaths(List<List<Object>> segments) {
+        List<List<PathSegment>> result = new ArrayList<>();
+        int size = segments.size();
+        int subpathSize = (int) Math.sqrt(size); // Dividir en subgrupos aproximadamente iguales
+
+        for (int i = 0; i < size; i += subpathSize) {
+            List<PathSegment> subpath = new ArrayList<>();
+            int end = Math.min(i + subpathSize, size);
+
+            for (int j = i; j < end; j++) {
+                List<Object> segment = segments.get(j);
+                List<Integer> nodes = Arrays.asList(
+                        ((Number) segment.get(0)).intValue(),
+                        ((Number) segment.get(1)).intValue()
+                );
+                int peso = ((Number) segment.get(2)).intValue();
+                int velocidad = ((Number) segment.get(3)).intValue();
+
+                subpath.add(new PathSegment(nodes, peso, velocidad));
+            }
+            result.add(subpath);
+        }
+        return result;
+    }
+
+    private PathSegment solvePathRecursively(List<List<PathSegment>> subpaths, int start, int end) {
+        // Caso base: un solo subpath
+        if (start == end) {
+            return mergePath(subpaths.get(start));
+        }
+
+        // Dividir y conquistar
+        int mid = (start + end) / 2;
+        PathSegment leftPath = solvePathRecursively(subpaths, start, mid);
+        PathSegment rightPath = solvePathRecursively(subpaths, mid + 1, end);
+
+        // Combinar resultados
+        return mergePaths(leftPath, rightPath);
+    }
+
+    private PathSegment mergePath(List<PathSegment> segments) {
+        List<Integer> mergedNodes = new ArrayList<>();
+        int totalPeso = 0;
+        double totalVelocidad = 0;
+
+        for (PathSegment segment : segments) {
+            if (mergedNodes.isEmpty()) {
+                mergedNodes.addAll(segment.getNodes());
+            } else {
+                mergedNodes.add(segment.getNodes().get(1));
+            }
+            totalPeso += segment.getTotalPeso();
+            totalVelocidad += segment.getVelocidadPromedio();
+        }
+
+        return new PathSegment(
+                mergedNodes,
+                totalPeso,
+                segments.isEmpty() ? 0 : totalVelocidad / segments.size()
+        );
+    }
+
+    private PathSegment mergePaths(PathSegment left, PathSegment right) {
+        List<Integer> mergedNodes = new ArrayList<>(left.getNodes());
+        if (!right.getNodes().isEmpty()) {
+            mergedNodes.addAll(right.getNodes().subList(1, right.getNodes().size()));
+        }
+
+        return new PathSegment(
+                mergedNodes,
+                left.getTotalPeso() + right.getTotalPeso(),
+                (left.getVelocidadPromedio() + right.getVelocidadPromedio()) / 2
+        );
     }
 }

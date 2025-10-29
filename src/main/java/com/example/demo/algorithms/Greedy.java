@@ -13,7 +13,7 @@ public class Greedy {
     private static Driver driver;
 
     public Greedy(Driver driver) {
-        this.driver = driver;
+        Greedy.driver = driver;
     }
 
     public static class PathResult {

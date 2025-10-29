@@ -60,7 +60,7 @@ public class RamificacionYPoda {
     }
 
     /**
-     * Método recursivo principal: realiza la búsqueda con poda.
+     * realiza ramificacion y poda de forma recursiva
      */
     private void branchAndBound(NodeEntity current, NodeEntity target,
                                 Set<Integer> visited,

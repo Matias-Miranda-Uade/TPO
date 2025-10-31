@@ -7,7 +7,7 @@ import org.springframework.data.neo4j.core.schema.Relationship;
 import java.util.ArrayList;
 import java.util.List;
 
-@Node
+@Node ("Esquina")
 public class NodeEntity {
 
     @Id

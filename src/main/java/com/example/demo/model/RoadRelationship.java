@@ -4,9 +4,15 @@ package com.example.demo.model;
 import org.springframework.data.neo4j.core.schema.RelationshipProperties;
 import org.springframework.data.neo4j.core.schema.Property;
 import org.springframework.data.neo4j.core.schema.TargetNode;
+import org.springframework.data.neo4j.core.schema.GeneratedValue;
+import org.springframework.data.neo4j.core.schema.Id;
 
 @RelationshipProperties
 public class RoadRelationship {
+
+    @Id
+    @GeneratedValue
+    private Long id;
 
     @Property
     private Integer velocidad;
@@ -27,6 +33,13 @@ public class RoadRelationship {
         this.calleId = calleId;
         this.peso = peso;
         this.target = target;
+    }
+
+    public Long getId() {
+        return id;
+    }
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public Integer getVelocidad() {

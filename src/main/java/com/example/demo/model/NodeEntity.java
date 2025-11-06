@@ -1,5 +1,6 @@
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Relationship;
@@ -7,6 +8,7 @@ import org.springframework.data.neo4j.core.schema.Relationship;
 import java.util.ArrayList;
 import java.util.List;
 
+@JsonIgnoreProperties({"roads.target"})
 @Node ("Esquina")
 public class NodeEntity {
 
@@ -14,7 +16,7 @@ public class NodeEntity {
     private Integer esquinaId;
     private String nombre;
 
-    @Relationship(direction=Relationship.Direction.OUTGOING)
+    @Relationship(type = "Calle", direction=Relationship.Direction.OUTGOING)
     private List<RoadRelationship> roads = new ArrayList<>();
 
     public NodeEntity() {}

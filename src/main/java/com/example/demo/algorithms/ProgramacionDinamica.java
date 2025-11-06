@@ -10,7 +10,7 @@ import java.util.*;
 @Component
 public class ProgramacionDinamica {
 
-    private final NodeRepository nodeRepo;
+    private static NodeRepository nodeRepo ;
 
     public ProgramacionDinamica(NodeRepository nodeRepo) {
         this.nodeRepo = nodeRepo;
@@ -20,7 +20,7 @@ public class ProgramacionDinamica {
      * Aplica Floyd–Warshall al grafo almacenado en Neo4j.
      * Devuelve el camino más corto entre startId y endId (si existe).
      */
-    public Map<String, Object> floydWarshall(Integer startId, Integer endId) {
+    public static Map<String, Object> floydWarshall(Integer startId, Integer endId) {
         List<NodeEntity> nodes = nodeRepo.findAll();
         if (nodes.isEmpty()) {
             return Map.of("error", "El grafo está vacío");

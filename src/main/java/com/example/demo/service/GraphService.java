@@ -2,28 +2,28 @@ package com.example.demo.service;
 
 
 import com.example.demo.algorithms.*;
-import com.example.demo.model.NodeEntity;
-import com.example.demo.model.RoadRelationship;
+import com.example.demo.model.*;
+import com.example.demo.repository.GraphRepository;
 import com.example.demo.repository.NodeRepository;
 import com.example.demo.repository.RoadRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Node;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class GraphService {
 
     private final NodeRepository nodeRepo;
-    private final RoadRepository roadRepository;
-    private final ProgramacionDinamica programacionDinamica;
+    @Autowired
+    private final GraphRepository graphRepository;
 
-    public GraphService(NodeRepository nodeRepository, RoadRepository roadRepository, ProgramacionDinamica programacionDinamica) {
+
+    public GraphService(NodeRepository nodeRepository, GraphRepository graphRepository) {
         this.nodeRepo = nodeRepository;
-        this.roadRepository = roadRepository;
-        this.programacionDinamica = programacionDinamica;
+
+        this.graphRepository = graphRepository;
     }
 
     public NodeEntity saveNode(NodeEntity node) {
@@ -31,74 +31,197 @@ public class GraphService {
     }
 
     public List<NodeEntity> getAllNodes() {
-        return nodeRepo.findAll();
+        return graphRepository.findAllWithRoads();
     }
 
-    public RoadRelationship saveRoad(RoadRelationship road) {
-        return roadRepository.save(road);
+    public NodeEntity conectarCalles(Integer origenId, RoadRelationship road) {
+        NodeEntity origen = nodeRepo.findById(origenId).orElseThrow();
+
+        origen.getRoads().add(road);
+        return nodeRepo.save(origen);
     }
 
     // BFS
-    public List<NodeEntity> bfs(Integer startId) {
-        return BFS.traverse(nodeRepo, startId);
+    public List<NodeDTO> bfs(Integer startId) {
+        List<NodeEntity> result= BFS.traverse(nodeRepo, startId);
+        return toNodeDTOList(result);
     }
 
     // DFS
-    public List<NodeEntity> dfs(Integer startId) {
-        return DFS.traverse(nodeRepo, startId);
+    public List<NodeDTO> dfs(Integer startId) {
+        List<NodeEntity> result= DFS.traverse(nodeRepo, startId);
+        return toNodeDTOList(result);
     }
 
     // Backtracking
-    public List<List<NodeEntity>> backtracking(Integer startId, Integer endId, int maxDepth) {
-        return Backtracking.findAllSimplePaths(nodeRepo, startId, endId, maxDepth);
+    public List<List<NodeDTO>> backtracking(Integer startId, Integer endId, int maxDepth) {
+        List<List<NodeEntity>> paths = Backtracking.findAllSimplePaths(nodeRepo, startId, endId, maxDepth);
+        return paths.stream().map(this::toNodeDTOList).toList();
     }
 
     // Dijkstra
-    public DijkstraResult dijkstra(Integer startId, Integer endId) {
-        return Dijkstra.shortestPath(nodeRepo, startId, endId);
+    public DijkstraResultDTO dijkstra(Integer startId, Integer endId) {
+        DijkstraResult res = Dijkstra.shortestPath(nodeRepo, startId, endId);
+
+        return new DijkstraResultDTO(
+                toNodeDTOList(res.getPath()),
+                res.getDistance()
+        );
     }
 
+    public record DijkstraResultDTO(List<NodeDTO> path, double distancia) {}
+
+
     // Kruskal
-    public List<RoadRelationship> kruskal() {
-        return Kruskal.minimumSpanningForest(nodeRepo);
+    public List<RoadDTO> kruskal() {
+        return toRoadDTOList(Kruskal.minimumSpanningForest(nodeRepo));
     }
 
     // Prim
-    public List<RoadRelationship> primMST(Integer startId) {
-        return Prim.minimumSpanningTree(nodeRepo, startId);
+    public List<RoadDTO> primMST(Integer startId) {
+        return toRoadDTOList(Prim.minimumSpanningTree(nodeRepo, startId));
     }
     // divide y conquista
     @Autowired
     private DivideAndConquer divideAndConquerPath;
 
-    public DivideAndConquer.PathSegment divideAndConquer(Integer startId, Integer endId) {
-        if (startId == null || endId == null) {
-            throw new IllegalArgumentException("Los IDs de inicio y fin no pueden ser nulos");
-        }
-        return divideAndConquerPath.findOptimalPath(startId, endId);
+    public PathResultDTO divideAndConquer(Integer startId, Integer endId) {
+        DivideAndConquer.PathSegment result = divideAndConquerPath.findOptimalPath(startId, endId);
+
+        List<PathNodeDTO> nodes = result.getNodes().stream()
+                .map(id -> {
+                    NodeEntity n = nodeRepo.findById(id).orElse(null);
+                    return new PathNodeDTO(id, n != null ? n.getNombre() : "??");
+                })
+                .toList();
+
+        List<RoadDTO> edges = buildEdgesFromNodes(result.getNodes());
+
+        return new PathResultDTO(nodes, edges, result.getTotalPeso(), result.getVelocidadPromedio());
     }
+
 
 
     //greedy
 
-    public Greedy.PathResult greedy(Integer startId, Integer endId) {
-        if (startId == null || endId == null) {
-            throw new IllegalArgumentException("Los IDs de inicio y fin no pueden ser nulos");
-        }
-        return Greedy.findGreedyPath(startId, endId);
+    public PathResultDTO greedy(Integer startId, Integer endId) {
+        Greedy.PathResult result = Greedy.findGreedyPath(startId, endId);
+
+        List<PathNodeDTO> nodes = result.getPath().stream()
+                .map(id -> {
+                    NodeEntity n = nodeRepo.findById(id).orElse(null);
+                    return new PathNodeDTO(id, n != null ? n.getNombre() : "??");
+                })
+                .toList();
+
+        List<RoadDTO> edges = buildEdgesFromNodes(result.getPath());
+
+        return new PathResultDTO(nodes, edges, result.getTotalPeso(), result.getVelocidadPromedio());
     }
+
 
 
     /**
      * Ejecuta el algoritmo de Floyd–Warshall para obtener el camino más corto entre dos nodos.
      */
-    public Map<String, Object> calcularCaminoMinimo(Integer startId, Integer endId) {
-        return programacionDinamica.floydWarshall(startId, endId);
+    public PathResultDTO calcularCaminoMinimo(Integer startId, Integer endId) {
+        Map<String, Object> r = ProgramacionDinamica.floydWarshall(startId, endId);
+
+        List<NodeEntity> list = (List<NodeEntity>) r.get("camino");
+        if (list == null) list = List.of();
+
+        List<PathNodeDTO> nodes = list.stream()
+                .map(n -> new PathNodeDTO(n.getEsquinaId(), n.getNombre()))
+                .toList();
+
+        List<Integer> ids = list.stream().map(NodeEntity::getEsquinaId).toList();
+        List<RoadDTO> edges = buildEdgesFromNodes(ids);
+
+        Integer dist = (Integer) r.get("distancia");
+
+        Double velocidadProm = edges.isEmpty()
+                ? null
+                : edges.stream().mapToInt(RoadDTO::getVelocidad).average().orElse(0);
+
+        return new PathResultDTO(nodes, edges, dist, velocidadProm);
     }
 
-    public Map<String, Object> caminoRamificacionYPoda(Integer startId, Integer endId) {
+
+    public PathResultDTO caminoRamificacionYPoda(Integer startId, Integer endId) {
         RamificacionYPoda ryp = new RamificacionYPoda(nodeRepo);
-        return ryp.shortestPath(startId, endId);
+        Map<String, Object> r = ryp.shortestPath(startId, endId);
+
+        List<NodeEntity> list = (List<NodeEntity>) r.get("camino");
+        if (list == null) list = List.of();
+
+        List<PathNodeDTO> pathNodes = list.stream()
+                .map(n -> new PathNodeDTO(n.getEsquinaId(), n.getNombre()))
+                .toList();
+
+        List<Integer> ids = list.stream().map(NodeEntity::getEsquinaId).toList();
+        List<RoadDTO> edges = buildEdgesFromNodes(ids);
+
+        Integer dist = (Integer) r.get("distancia_minima");
+
+        Double velocidadProm = edges.isEmpty()
+                ? null
+                : edges.stream().mapToInt(RoadDTO::getVelocidad).average().orElse(0);
+
+        return new PathResultDTO(pathNodes, edges, dist, velocidadProm);
     }
+
+
+
+    private NodeDTO toNodeDTO(NodeEntity n) {
+        return new NodeDTO(n.getEsquinaId(), n.getNombre());
+    }
+
+    private List<NodeDTO> toNodeDTOList(List<NodeEntity> nodes) {
+        return nodes.stream().map(this::toNodeDTO).toList();
+    }
+
+    private RoadDTO toRoadDTO(RoadRelationship r) {
+        return new RoadDTO(
+                r.getCalleId(),
+                r.getTargetId(),
+                r.getNombre(),
+                r.getPeso(),
+                r.getVelocidad()
+        );
+    }
+
+    private List<RoadDTO> toRoadDTOList(List<RoadRelationship> roads) {
+        return roads.stream().map(this::toRoadDTO).toList();
+    }
+
+
+    private List<RoadDTO> buildEdgesFromNodes(List<Integer> nodeIds) {
+        List<RoadDTO> edges = new ArrayList<>();
+
+        for (int i = 0; i < nodeIds.size() - 1; i++) {
+            Integer from = nodeIds.get(i);
+            Integer to = nodeIds.get(i + 1);
+
+            // Buscar la arista real en Neo4j
+            NodeEntity node = nodeRepo.findById(from).orElse(null);
+            if (node == null || node.getRoads() == null) continue;
+
+            for (RoadRelationship r : node.getRoads()) {
+                if (r.getTarget() != null && r.getTarget().getEsquinaId().equals(to)) {
+                    edges.add(new RoadDTO(
+                            r.getCalleId(),
+                            to,
+                            r.getNombre(),
+                            r.getVelocidad(),
+                            r.getPeso()
+                    ));
+                    break;
+                }
+            }
+        }
+
+        return edges;
+    }
+
 }
 

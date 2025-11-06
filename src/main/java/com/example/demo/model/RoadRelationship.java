@@ -1,6 +1,8 @@
 package com.example.demo.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.springframework.data.neo4j.core.schema.RelationshipProperties;
 import org.springframework.data.neo4j.core.schema.Property;
 import org.springframework.data.neo4j.core.schema.TargetNode;
@@ -12,7 +14,11 @@ public class RoadRelationship {
 
     @Id
     @GeneratedValue
+    @JsonIgnore
     private Long id;
+
+    @Property
+    private String nombre;
 
     @Property
     private Integer velocidad;
@@ -24,11 +30,13 @@ public class RoadRelationship {
     private Integer peso;
 
     @TargetNode
+    @JsonIgnoreProperties ({"roads"})
     private NodeEntity target;
 
     public RoadRelationship() {}
 
-    public RoadRelationship(Integer velocidad, Integer calleId, Integer peso, NodeEntity target) {
+    public RoadRelationship(String nombre, Integer velocidad, Integer calleId, Integer peso, NodeEntity target) {
+        this.nombre = nombre;
         this.velocidad = velocidad;
         this.calleId = calleId;
         this.peso = peso;
@@ -73,4 +81,17 @@ public class RoadRelationship {
     public void setTarget(NodeEntity target) {
         this.target = target;
     }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public Integer getTargetId() {
+        return target != null ? target.getEsquinaId() : null;
+    }
+
 }

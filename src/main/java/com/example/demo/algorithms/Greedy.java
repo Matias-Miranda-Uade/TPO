@@ -56,7 +56,7 @@ public class Greedy {
         while (currentNode != null && !currentNode.equals(endId)) {
             // Consulta Cypher para obtener vecinos no visitados
             String query = """
-                MATCH (current:NodeEntity {esquinaId: $currentId})-[r:ROAD]->(next:NodeEntity)
+                MATCH (current:Esquina {esquinaId: $currentId})-[r:Calle]->(next:Esquina)
                 WHERE NOT next.esquinaId IN $visitedIds
                 RETURN next.esquinaId as nextId, r.peso as peso, r.velocidad as velocidad
                 ORDER BY r.peso ASC

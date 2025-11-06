@@ -68,6 +68,7 @@ public class Kruskal {
                 // construir RoadRelationship resultante apuntando al nodo target real (v)
                 NodeEntity targetNode = nodeMap.get(e.v);
                 RoadRelationship rel = new RoadRelationship(
+                        e.orig.getNombre(),
                         e.orig.getVelocidad(),
                         e.orig.getCalleId(),
                         e.orig.getPeso(),

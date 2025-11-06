@@ -43,7 +43,7 @@ public class DivideAndConquer {
     public PathSegment findOptimalPath(Integer startId, Integer endId) {
         // Obtener todos los nodos y relaciones del camino
         String query = """
-            MATCH path = shortestPath((start:NodeEntity {esquinaId: $startId})-[*]-(end:NodeEntity {esquinaId: $endId}))
+            MATCH path = shortestPath((start:Esquina {esquinaId: $startId})-[:Calle*]-(end:Esquina {esquinaId: $endId}))
             UNWIND relationships(path) as r
             RETURN collect(distinct [startNode(r).esquinaId, endNode(r).esquinaId, r.peso, r.velocidad]) as segments
         """;

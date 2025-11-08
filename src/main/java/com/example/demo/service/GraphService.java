@@ -139,9 +139,7 @@ public class GraphService {
 
         Integer dist = (Integer) r.get("distancia");
 
-        Double velocidadProm = edges.isEmpty()
-                ? null
-                : edges.stream().mapToInt(RoadDTO::getVelocidad).average().orElse(0);
+        Double velocidadProm = (Double) r.get("velocidad_promedio");
 
         return new PathResultDTO(nodes, edges, dist, velocidadProm);
     }
@@ -163,9 +161,7 @@ public class GraphService {
 
         Integer dist = (Integer) r.get("distancia_minima");
 
-        Double velocidadProm = edges.isEmpty()
-                ? null
-                : edges.stream().mapToInt(RoadDTO::getVelocidad).average().orElse(0);
+        Double velocidadProm = (Double) r.get("velocidad_promedio");
 
         return new PathResultDTO(pathNodes, edges, dist, velocidadProm);
     }
@@ -212,8 +208,8 @@ public class GraphService {
                             r.getCalleId(),
                             to,
                             r.getNombre(),
-                            r.getVelocidad(),
-                            r.getPeso()
+                            r.getPeso(),
+                            r.getVelocidad()
                     ));
                     break;
                 }

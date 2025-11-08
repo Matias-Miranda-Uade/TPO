@@ -88,11 +88,32 @@ public class ProgramacionDinamica {
         List<NodeEntity> path = reconstructNodePath(next, nodes, nodeIds, uIdx, vIdx);
         Integer distance = dist[uIdx][vIdx] >= INF ? null : dist[uIdx][vIdx];
 
+        // 🔹 Calcular velocidad promedio del camino encontrado
+        double velocidadTotal = 0;
+        int cantidad = 0;
+        for (int i = 0; i < path.size() - 1; i++) {
+            NodeEntity from = path.get(i);
+            NodeEntity to = path.get(i + 1);
+            if (from.getRoads() == null) continue;
+            for (RoadRelationship r : from.getRoads()) {
+                if (r.getTarget() != null && r.getTarget().getEsquinaId().equals(to.getEsquinaId())) {
+                    if (r.getVelocidad() != null) {
+                        velocidadTotal += r.getVelocidad();
+                        cantidad++;
+                    }
+                    break;
+                }
+            }
+        }
+
+        Double velocidadPromedio = cantidad == 0 ? null : velocidadTotal / cantidad;
+
         return Map.of(
                 "inicio", startId,
                 "destino", endId,
                 "distancia", distance,
-                "camino", path
+                "camino", path,
+                "velocidad_promedio", velocidadPromedio
         );
     }
 

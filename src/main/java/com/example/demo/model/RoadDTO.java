@@ -11,8 +11,8 @@ public class RoadDTO {
         this.calleId=calleId;
         this.targetId = targetId;
         this.nombre = nombre;
-        this.velocidad = velocidad;
         this.peso = peso;
+        this.velocidad = velocidad;
     }
 
 

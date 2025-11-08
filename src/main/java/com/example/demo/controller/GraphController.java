@@ -31,10 +31,7 @@ public class GraphController {
         return graphService.getAllNodes();
     }
 
-    @PostMapping("/roads")
-    public NodeEntity createRoad(@RequestBody Integer startId, @RequestBody RoadRelationship road) {
-        return graphService.conectarCalles(startId, road);
-    }
+
     @GetMapping("/bfs")
     public List<NodeDTO> bfs(@RequestParam Integer startId) {
         return graphService.bfs(startId);

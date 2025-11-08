@@ -51,11 +51,32 @@ public class RamificacionYPoda {
             return Map.of("inicio", startId, "destino", endId, "mensaje", "No hay camino disponible");
         }
 
+        // 🔹 Calcular velocidad promedio del mejor camino
+        double velocidadTotal = 0;
+        int cantidad = 0;
+        for (int i = 0; i < bestPath.size() - 1; i++) {
+            NodeEntity from = bestPath.get(i);
+            NodeEntity to = bestPath.get(i + 1);
+            if (from.getRoads() == null) continue;
+            for (RoadRelationship r : from.getRoads()) {
+                if (r.getTarget() != null && r.getTarget().getEsquinaId().equals(to.getEsquinaId())) {
+                    if (r.getVelocidad() != null) {
+                        velocidadTotal += r.getVelocidad();
+                        cantidad++;
+                    }
+                    break;
+                }
+            }
+        }
+
+        Double velocidadPromedio = cantidad == 0 ? null : velocidadTotal / cantidad;
+
         return Map.of(
                 "inicio", startId,
                 "destino", endId,
                 "distancia_minima", bestDistance[0],
-                "camino", bestPath
+                "camino", bestPath,
+                "velocidad_promedio", velocidadPromedio
         );
     }
 
